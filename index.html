@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="온라인으로 초파일 연등을 달고 소원을 남기는 페이지"
+    />
+    <title>소원 연등</title>
+    <script>
+      (() => {
+        const savedTheme = localStorage.getItem("wishBuddha:theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.theme = savedTheme || (prefersDark ? "dark" : "light");
+      })();
+    </script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" aria-label="메인 조작">
+        <div class="topbar-actions">
+          <p class="page-count" id="pageCount">1 / 1</p>
+          <button class="theme-toggle" id="themeToggle" type="button">
+            <span class="theme-icon" aria-hidden="true"></span>
+            <span id="themeToggleText">Dark</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main-stage" aria-label="소원 연등">
+        <section class="lantern-field" aria-label="연등 목록">
+          <div class="lantern-grid" id="lanternGrid"></div>
+          <nav class="pagination" aria-label="연등 페이지">
+            <button class="page-button" id="prevPage" type="button" aria-label="이전 페이지">←</button>
+            <span class="page-status" id="pageStatus">1 / 1</span>
+            <button class="page-button" id="nextPage" type="button" aria-label="다음 페이지">→</button>
+          </nav>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="modal wish-modal" id="wishFormDialog" aria-labelledby="wishFormTitle">
+      <form class="modal-panel" id="wishForm" method="dialog">
+        <button class="icon-close" type="button" data-close-dialog aria-label="닫기">×</button>
+        <div class="npc-row">
+          <img src="./img/npc_up.png" alt="" />
+          <div>
+            <p class="eyebrow">소원 입력</p>
+            <h2 id="wishFormTitle">연등에 소원을 입력하세요</h2>
+            <p>소원은 수정할 수 없으니 염원을 담아 신중히 입력하세요.</p>
+          </div>
+        </div>
+
+        <input type="hidden" id="slotIndex" name="slotIndex" />
+
+        <label class="field">
+          <span>이름</span>
+          <input id="wishName" name="name" type="text" maxlength="12" autocomplete="name" required />
+        </label>
+
+        <label class="field">
+          <span>소원 내용</span>
+          <textarea id="wishContent" name="content" maxlength="120" rows="5" required></textarea>
+        </label>
+
+        <fieldset class="color-field">
+          <legend>연등 색상</legend>
+          <div class="color-options">
+            <label class="color-option red">
+              <input type="radio" name="color" value="red" required />
+              <span>빨강</span>
+            </label>
+            <label class="color-option green">
+              <input type="radio" name="color" value="green" />
+              <span>초록</span>
+            </label>
+            <label class="color-option blue">
+              <input type="radio" name="color" value="blue" />
+              <span>파랑</span>
+            </label>
+            <label class="color-option yellow">
+              <input type="radio" name="color" value="yellow" />
+              <span>노랑</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="modal-actions">
+          <button class="button ghost" type="button" data-close-dialog>취소</button>
+          <button class="button primary" type="submit">입력 완료</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal confirm-modal" id="confirmDialog" aria-labelledby="confirmTitle">
+      <form class="modal-panel" method="dialog">
+        <button class="icon-close" type="button" data-close-dialog aria-label="닫기">×</button>
+        <h2 id="confirmTitle">이대로 연등에 소원을 담을까요?</h2>
+        <p>소원은 한 번 입력하면 수정할 수 없습니다.</p>
+        <div class="confirm-preview" id="confirmPreview"></div>
+        <div class="modal-actions">
+          <button class="button ghost" type="button" data-close-dialog>다시 볼게요</button>
+          <button class="button primary" id="confirmSubmit" type="button">소원 담기</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal view-modal" id="wishViewDialog" aria-labelledby="wishViewTitle">
+      <article class="modal-panel wish-view">
+        <button class="icon-close" type="button" data-close-dialog aria-label="닫기">×</button>
+        <div class="wish-paper">
+          <h2 id="wishViewTitle"></h2>
+          <p id="wishViewContent"></p>
+        </div>
+      </article>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
