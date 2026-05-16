@@ -1,9 +1,12 @@
 const SLOTS_PER_PAGE = 20;
+const SUPABASE_URL = "https://ijypbjylwikzxyrqxkdv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3yZMrj62wfssVPwCtq_AlA_MsAWkBMg";
 const STORAGE_KEYS = {
-  wishes: "wishBuddha:wishes",
   participantId: "wishBuddha:participantId",
   theme: "wishBuddha:theme",
 };
+
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const lanternImages = {
   empty: "./img/lantern/empty.png",
@@ -29,17 +32,6 @@ Object.values(lanternImages.light)
   });
 
 const store = {
-  getWishes() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.wishes) || "[]");
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  },
-  saveWishes(wishes) {
-    localStorage.setItem(STORAGE_KEYS.wishes, JSON.stringify(wishes));
-  },
   getParticipantId() {
     const saved = localStorage.getItem(STORAGE_KEYS.participantId);
     if (saved) return saved;
@@ -58,6 +50,28 @@ const store = {
   },
 };
 
+function fromDbWish(wish) {
+  return {
+    id: wish.id,
+    slotIndex: wish.slot_index,
+    name: wish.name,
+    content: wish.content,
+    color: wish.color,
+    participantId: wish.participant_id,
+    createdAt: wish.created_at,
+  };
+}
+
+function toDbWish(wish) {
+  return {
+    slot_index: wish.slotIndex,
+    name: wish.name,
+    content: wish.content,
+    color: wish.color,
+    participant_id: wish.participantId,
+  };
+}
+
 const elements = {
   grid: document.querySelector("#lanternGrid"),
   pageCount: document.querySelector("#pageCount"),
@@ -68,11 +82,14 @@ const elements = {
   themeToggleText: document.querySelector("#themeToggleText"),
   wishFormDialog: document.querySelector("#wishFormDialog"),
   wishForm: document.querySelector("#wishForm"),
+  wishFormTitle: document.querySelector("#wishFormTitle"),
+  wishFormLine: document.querySelector(".dialogue-line"),
   slotIndex: document.querySelector("#slotIndex"),
   wishName: document.querySelector("#wishName"),
   wishContent: document.querySelector("#wishContent"),
   confirmDialog: document.querySelector("#confirmDialog"),
   confirmPreview: document.querySelector("#confirmPreview"),
+  confirmBack: document.querySelector("#confirmBack"),
   confirmSubmit: document.querySelector("#confirmSubmit"),
   wishViewDialog: document.querySelector("#wishViewDialog"),
   wishViewTitle: document.querySelector("#wishViewTitle"),
@@ -80,10 +97,18 @@ const elements = {
   toast: document.querySelector("#toast"),
 };
 
-let wishes = store.getWishes();
+let wishes = [];
 let pendingWish = null;
 let toastTimer = 0;
+let typewriterTimer = 0;
 let currentPage = 1;
+let isSaving = false;
+
+function setConfirmSaving(saving) {
+  isSaving = saving;
+  elements.confirmSubmit.disabled = saving;
+  elements.confirmSubmit.textContent = saving ? "담는 중..." : "소원 담기";
+}
 
 function getWishBySlot(slotIndex) {
   return wishes.find((wish) => wish.slotIndex === slotIndex);
@@ -161,6 +186,40 @@ function renderLanternGrid() {
   elements.grid.replaceChildren(fragment);
 }
 
+async function loadWishes({ silent = false } = {}) {
+  if (!supabaseClient) {
+    if (!silent) showToast("Supabase 연결 스크립트를 불러오지 못했어요.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("wishes")
+    .select("id, slot_index, name, content, color, participant_id, created_at")
+    .order("slot_index", { ascending: true });
+
+  if (error) {
+    if (!silent) showToast("소원 목록을 불러오지 못했어요. Supabase 테이블을 확인해 주세요.");
+    console.error("Failed to load wishes:", error);
+    return;
+  }
+
+  wishes = data.map(fromDbWish);
+  renderLanternGrid();
+}
+
+function subscribeToWishChanges() {
+  if (!supabaseClient) return;
+
+  supabaseClient
+    .channel("public:wishes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "wishes" },
+      () => loadWishes({ silent: true })
+    )
+    .subscribe();
+}
+
 function refreshLanternImages() {
   document.querySelectorAll(".lantern-slot").forEach((slot) => {
     const slotIndex = Number(slot.dataset.slotIndex);
@@ -179,6 +238,51 @@ function closeDialog(dialog) {
   if (dialog.open) dialog.close();
 }
 
+function stopWishPrompt() {
+  window.clearTimeout(typewriterTimer);
+  typewriterTimer = 0;
+}
+
+function typeText(target, text, onDone) {
+  let index = 0;
+  target.textContent = "";
+  target.classList.remove("is-done");
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    target.textContent = text;
+    target.classList.add("is-done");
+    onDone?.();
+    return;
+  }
+
+  const tick = () => {
+    target.textContent = text.slice(0, index);
+    index += 1;
+
+    if (index <= text.length) {
+      typewriterTimer = window.setTimeout(tick, 38);
+      return;
+    }
+
+    target.classList.add("is-done");
+    onDone?.();
+  };
+
+  tick();
+}
+
+function playWishPrompt() {
+  stopWishPrompt();
+  const title = elements.wishFormTitle.dataset.prompt;
+  const line = elements.wishFormLine.dataset.prompt;
+
+  elements.wishFormLine.textContent = "";
+  elements.wishFormLine.classList.remove("is-done");
+  typeText(elements.wishFormTitle, title, () => {
+    typeText(elements.wishFormLine, line);
+  });
+}
+
 function resetForm() {
   elements.wishForm.reset();
   elements.slotIndex.value = "";
@@ -188,6 +292,7 @@ function openWishForm(slotIndex) {
   resetForm();
   elements.slotIndex.value = String(slotIndex);
   openDialog(elements.wishFormDialog);
+  playWishPrompt();
   window.setTimeout(() => elements.wishName.focus(), 80);
 }
 
@@ -195,6 +300,40 @@ function openWishView(wish) {
   elements.wishViewTitle.textContent = `${wish.name}님의 소원`;
   elements.wishViewContent.textContent = wish.content;
   openDialog(elements.wishViewDialog);
+}
+
+function restorePendingWishForm() {
+  if (!pendingWish) {
+    closeDialog(elements.confirmDialog);
+    return;
+  }
+
+  closeDialog(elements.confirmDialog);
+  resetForm();
+  elements.slotIndex.value = String(pendingWish.slotIndex);
+  elements.wishName.value = pendingWish.name;
+  elements.wishContent.value = pendingWish.content;
+
+  const colorInput = elements.wishForm.querySelector(
+    `input[name="color"][value="${CSS.escape(pendingWish.color)}"]`
+  );
+  if (colorInput) colorInput.checked = true;
+
+  openDialog(elements.wishFormDialog);
+  playWishPrompt();
+  window.setTimeout(() => elements.wishContent.focus(), 80);
+}
+
+function getSaveErrorMessage(error) {
+  if (error.code === "23505") {
+    return "방금 다른 분이 이 연등에 소원을 달았어요. 다른 연등을 골라 주세요.";
+  }
+
+  if (error.code === "42501") {
+    return "Supabase 입력 정책이 저장을 막고 있어요. insert policy를 확인해 주세요.";
+  }
+
+  return "소원을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.";
 }
 
 function showToast(message) {
@@ -260,21 +399,56 @@ function handleFormSubmit(event) {
     <span>${escapeHtml(content).replaceAll("\n", "<br />")}</span>
   `;
 
+  stopWishPrompt();
   closeDialog(elements.wishFormDialog);
   openDialog(elements.confirmDialog);
 }
 
-function savePendingWish() {
-  if (!pendingWish) return;
+async function savePendingWish() {
+  if (!pendingWish || isSaving) return;
 
-  const savedWish = pendingWish;
-  wishes = [...wishes, savedWish];
-  store.saveWishes(wishes);
-  currentPage = Math.floor(savedWish.slotIndex / SLOTS_PER_PAGE) + 1;
-  pendingWish = null;
-  closeDialog(elements.confirmDialog);
-  renderLanternGrid();
-  showToast("소원이 연등에 담겼어요.");
+  if (!supabaseClient) {
+    showToast("Supabase 연결 스크립트를 불러오지 못했어요.");
+    return;
+  }
+
+  const wishToSave = pendingWish;
+  setConfirmSaving(true);
+
+  try {
+    const { error } = await supabaseClient.from("wishes").insert(toDbWish(wishToSave));
+
+    if (error) {
+      console.error("Failed to save wish:", error);
+
+      if (error.code === "23505") {
+        pendingWish = null;
+        closeDialog(elements.confirmDialog);
+        await loadWishes({ silent: true });
+        showToast(getSaveErrorMessage(error));
+        return;
+      }
+
+      showToast(getSaveErrorMessage(error));
+      return;
+    }
+
+    wishes = [
+      ...wishes.filter((wish) => wish.slotIndex !== wishToSave.slotIndex),
+      wishToSave,
+    ];
+    currentPage = Math.floor(wishToSave.slotIndex / SLOTS_PER_PAGE) + 1;
+    pendingWish = null;
+    closeDialog(elements.confirmDialog);
+    renderLanternGrid();
+    await loadWishes({ silent: true });
+    showToast("소원이 연등에 담겼어요.");
+  } catch (error) {
+    console.error("Failed to save wish:", error);
+    showToast("소원을 저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
+  } finally {
+    setConfirmSaving(false);
+  }
 }
 
 function getColorLabel(color) {
@@ -318,13 +492,21 @@ function bindDialogControls() {
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => {
       const dialog = button.closest("dialog");
+      if (dialog === elements.wishFormDialog) stopWishPrompt();
       closeDialog(dialog);
     });
   });
 
   document.querySelectorAll("dialog").forEach((dialog) => {
     dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) closeDialog(dialog);
+      if (event.target === dialog) {
+        if (dialog === elements.wishFormDialog) stopWishPrompt();
+        closeDialog(dialog);
+      }
+    });
+
+    dialog.addEventListener("cancel", () => {
+      if (dialog === elements.wishFormDialog) stopWishPrompt();
     });
   });
 }
@@ -334,8 +516,11 @@ elements.prevPage.addEventListener("click", () => movePage(-1));
 elements.nextPage.addEventListener("click", () => movePage(1));
 elements.themeToggle.addEventListener("click", handleThemeToggle);
 elements.wishForm.addEventListener("submit", handleFormSubmit);
+elements.confirmBack.addEventListener("click", restorePendingWishForm);
 elements.confirmSubmit.addEventListener("click", savePendingWish);
 bindDialogControls();
 store.getParticipantId();
 updateThemeText();
 renderLanternGrid();
+loadWishes();
+subscribeToWishChanges();
