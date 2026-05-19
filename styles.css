@@ -70,6 +70,8 @@ body::before {
   z-index: 0;
   content: "";
   background: var(--bg-image) center bottom / cover no-repeat;
+  filter: blur(18px) saturate(1.08);
+  transform: scale(1.06);
   pointer-events: none;
   transition: background-image 180ms ease;
 }
@@ -111,7 +113,7 @@ textarea:focus-visible {
 .app-shell {
   position: relative;
   z-index: 1;
-  width: min(1120px, 100%);
+  width: min(560px, 100%);
   height: calc(100svh - var(--ad-bar-height));
   margin: 0 auto;
   display: grid;
@@ -120,8 +122,36 @@ textarea:focus-visible {
   overflow: hidden;
 }
 
+.app-shell::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  background: var(--bg-image) center bottom / cover no-repeat;
+  pointer-events: none;
+  transition: background-image 180ms ease;
+}
+
+.app-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.3), transparent 34%),
+    linear-gradient(180deg, transparent 54%, rgba(10, 12, 15, 0.09));
+  pointer-events: none;
+}
+
+:root[data-theme="dark"] .app-shell::after {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 216, 138, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(4, 6, 16, 0.18), rgba(2, 3, 8, 0.22));
+}
+
 .topbar {
-  z-index: 2;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -203,6 +233,7 @@ h1 {
   z-index: 3;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
   height: var(--ad-bar-height);
   padding: 7px clamp(12px, 2.8vw, 24px);
@@ -252,7 +283,7 @@ h1 {
   align-items: center;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: min(620px, calc(100vw - 112px));
+  max-width: min(430px, calc(100vw - 112px));
   overflow: hidden;
 }
 
@@ -331,6 +362,8 @@ h1 {
 }
 
 .main-stage {
+  position: relative;
+  z-index: 1;
   display: grid;
   align-content: start;
   min-height: 0;
