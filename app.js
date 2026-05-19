@@ -5,6 +5,42 @@ const STORAGE_KEYS = {
   participantId: "wishBuddha:participantId",
   theme: "wishBuddha:theme",
 };
+const AD_ROTATION_INTERVAL = 4200;
+const AD_ITEMS = [
+  {
+    text: "이 사이트는 AI 바이브 코딩으로 만들었어요!",
+  },
+  {
+    text: "바이브 코딩이 궁금하다면? 👉 ",
+    linkText: "바로바로 바이브 코딩",
+    href: "https://www.yes24.com/product/goods/183530330",
+  },
+  {
+    text: "클로드가 궁금하다면? 👉 ",
+    linkText: "바로바로 클로드",
+    href: "https://www.yes24.com/product/goods/189114943",
+  },
+  {
+    text: "제미나이가 궁금하다면? 👉 ",
+    linkText: "바로바로 제미나이",
+    href: "https://www.yes24.com/product/goods/189114942",
+  },
+  {
+    text: "바이브 코딩으로 돈 벌고 싶다면? 👉 ",
+    linkText: "요즘 바이브 코딩 실전 외주 돈벌기",
+    href: "https://www.yes24.com/product/goods/187024885",
+  },
+  {
+    text: "AI 이미지 생성에 관심있다면? 👉 ",
+    linkText: "이게 되네 나노 바나나2 비포&애프터",
+    href: "https://www.yes24.com/product/goods/188600611",
+  },
+  {
+    text: "AI 에이전트 시대 교양서가 읽고 싶다면? 👉 ",
+    linkText: "AI 국부론",
+    href: "https://www.yes24.com/product/goods/181178233",
+  },
+];
 
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -31,14 +67,32 @@ Object.values(lanternImages.light)
     image.src = src;
   });
 
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    return false;
+  }
+
+  return true;
+}
+
 const store = {
   getParticipantId() {
-    const saved = localStorage.getItem(STORAGE_KEYS.participantId);
+    const saved = readStorage(STORAGE_KEYS.participantId);
     if (saved) return saved;
 
     const participantId =
       crypto.randomUUID?.() || `participant-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    localStorage.setItem(STORAGE_KEYS.participantId, participantId);
+    writeStorage(STORAGE_KEYS.participantId, participantId);
     return participantId;
   },
   getTheme() {
@@ -46,7 +100,7 @@ const store = {
   },
   saveTheme(theme) {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(STORAGE_KEYS.theme, theme);
+    writeStorage(STORAGE_KEYS.theme, theme);
   },
 };
 
@@ -78,6 +132,8 @@ const elements = {
   pageStatus: document.querySelector("#pageStatus"),
   prevPage: document.querySelector("#prevPage"),
   nextPage: document.querySelector("#nextPage"),
+  adMessage: document.querySelector("#adMessage"),
+  shareLinkButton: document.querySelector("#shareLinkButton"),
   themeToggle: document.querySelector("#themeToggle"),
   themeToggleText: document.querySelector("#themeToggleText"),
   wishFormDialog: document.querySelector("#wishFormDialog"),
@@ -101,6 +157,8 @@ let wishes = [];
 let pendingWish = null;
 let toastTimer = 0;
 let typewriterTimer = 0;
+let adRotationTimer = 0;
+let currentAdIndex = 0;
 let currentPage = 1;
 let isSaving = false;
 
@@ -345,6 +403,51 @@ function showToast(message) {
   }, 2800);
 }
 
+function renderAdMessage(item) {
+  elements.adMessage.replaceChildren();
+
+  if (!item.href || !item.linkText) {
+    elements.adMessage.textContent = item.text;
+    elements.adMessage.title = item.text;
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = item.href;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = `${item.text}${item.linkText}`;
+  elements.adMessage.title = link.textContent;
+  elements.adMessage.append(link);
+}
+
+function showAdAtIndex(index) {
+  if (!AD_ITEMS.length) return;
+
+  currentAdIndex = index % AD_ITEMS.length;
+  renderAdMessage(AD_ITEMS[currentAdIndex]);
+}
+
+function rotateAdMessage() {
+  if (AD_ITEMS.length <= 1) return;
+
+  elements.adMessage.classList.add("is-changing");
+  window.setTimeout(() => {
+    showAdAtIndex(currentAdIndex + 1);
+    elements.adMessage.classList.remove("is-changing");
+  }, 180);
+}
+
+function startAdRotation() {
+  if (!elements.adMessage || !AD_ITEMS.length) return;
+
+  showAdAtIndex(currentAdIndex);
+  if (AD_ITEMS.length <= 1) return;
+
+  window.clearInterval(adRotationTimer);
+  adRotationTimer = window.setInterval(rotateAdMessage, AD_ROTATION_INTERVAL);
+}
+
 function handleGridClick(event) {
   const slot = event.target.closest(".lantern-slot");
   if (!slot) return;
@@ -479,6 +582,60 @@ function handleThemeToggle() {
   refreshLanternImages();
 }
 
+function copyShareLinkWithSelection(link) {
+  const input = document.createElement("input");
+  input.value = link;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
+  document.body.append(input);
+  input.focus();
+  input.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    input.remove();
+  }
+}
+
+async function copyShareLink(link) {
+  if (copyShareLinkWithSelection(link)) return;
+
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    await navigator.clipboard.writeText(link);
+    return;
+  }
+
+  throw new Error("Copy command was rejected.");
+}
+
+async function handleShareLink() {
+  const link = window.location.href;
+  const shareData = {
+    title: document.title,
+    text: "소원 연등에 함께 소원을 남겨보세요.",
+    url: link,
+  };
+
+  if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
+  }
+
+  try {
+    await copyShareLink(link);
+    showToast("링크를 복사했어요.");
+  } catch (error) {
+    console.error("Failed to copy share link:", error);
+    showToast("링크 복사에 실패했어요. 주소창의 링크를 복사해 주세요.");
+  }
+}
+
 function movePage(direction) {
   const totalPages = getTotalPages();
   const nextPage = currentPage + direction;
@@ -514,6 +671,7 @@ function bindDialogControls() {
 elements.grid.addEventListener("click", handleGridClick);
 elements.prevPage.addEventListener("click", () => movePage(-1));
 elements.nextPage.addEventListener("click", () => movePage(1));
+elements.shareLinkButton.addEventListener("click", handleShareLink);
 elements.themeToggle.addEventListener("click", handleThemeToggle);
 elements.wishForm.addEventListener("submit", handleFormSubmit);
 elements.confirmBack.addEventListener("click", restorePendingWishForm);
@@ -521,6 +679,7 @@ elements.confirmSubmit.addEventListener("click", savePendingWish);
 bindDialogControls();
 store.getParticipantId();
 updateThemeText();
+startAdRotation();
 renderLanternGrid();
 loadWishes();
 subscribeToWishChanges();

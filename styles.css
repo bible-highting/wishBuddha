@@ -7,6 +7,7 @@
 
 :root {
   color-scheme: light;
+  --ad-bar-height: 48px;
   --bg-image: url("./img/bg_light.png");
   --text: #18262c;
   --muted: #55717a;
@@ -65,7 +66,7 @@ body {
 
 body::before {
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--ad-bar-height);
   z-index: 0;
   content: "";
   background: var(--bg-image) center bottom / cover no-repeat;
@@ -75,7 +76,7 @@ body::before {
 
 body::after {
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--ad-bar-height);
   z-index: 0;
   content: "";
   background:
@@ -111,7 +112,7 @@ textarea:focus-visible {
   position: relative;
   z-index: 1;
   width: min(1120px, 100%);
-  height: 100svh;
+  height: calc(100svh - var(--ad-bar-height));
   margin: 0 auto;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -192,6 +193,141 @@ h1 {
 :root[data-theme="dark"] .theme-icon {
   background: #fff0bd;
   box-shadow: inset 6px 0 0 #53617f;
+}
+
+.bottom-left-tools {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: var(--ad-bar-height);
+  padding: 7px clamp(12px, 2.8vw, 24px);
+  gap: 8px;
+  background: #050505;
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.share-link-button,
+.ad-ticker {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.share-link-button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 7px 10px;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.share-link-button:hover,
+.share-link-button:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.share-link-button:active {
+  transform: translateY(0);
+}
+
+.ad-ticker {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(620px, calc(100vw - 112px));
+  overflow: hidden;
+}
+
+.ad-label {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.ad-message {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 11px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 34px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.ad-message.is-changing {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.ad-message a {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-link-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:root[data-theme="dark"] .share-link-button,
+:root[data-theme="dark"] .ad-ticker {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme="dark"] .share-link-button:hover,
+:root[data-theme="dark"] .share-link-button:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .ad-label {
+  border-right-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.64);
+}
+
+:root[data-theme="dark"] .ad-message {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .main-stage {
@@ -703,7 +839,7 @@ h1 {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: calc(var(--ad-bar-height) + 20px);
   z-index: 4;
   max-width: min(88vw, 420px);
   padding: 13px 16px;
@@ -781,6 +917,39 @@ h1 {
   .theme-toggle {
     min-height: 38px;
     padding: 7px 11px;
+  }
+
+  .bottom-left-tools {
+    gap: 6px;
+    max-width: none;
+  }
+
+  .share-link-button,
+  .ad-ticker {
+    min-height: 32px;
+    font-size: 0.74rem;
+  }
+
+  .share-link-button {
+    padding: 7px 9px;
+  }
+
+  .ad-ticker {
+    max-width: calc(100vw - 94px);
+  }
+
+  .ad-label {
+    padding: 0 8px;
+  }
+
+  .ad-message {
+    padding: 0 10px;
+    line-height: 32px;
+  }
+
+  .share-link-icon {
+    width: 14px;
+    height: 14px;
   }
 
   .lantern-grid {
