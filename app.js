@@ -127,6 +127,8 @@ function toDbWish(wish) {
 }
 
 const elements = {
+  appShell: document.querySelector(".app-shell"),
+  bottomTools: document.querySelector(".bottom-left-tools"),
   grid: document.querySelector("#lanternGrid"),
   pageCount: document.querySelector("#pageCount"),
   pageStatus: document.querySelector("#pageStatus"),
@@ -136,6 +138,10 @@ const elements = {
   shareLinkButton: document.querySelector("#shareLinkButton"),
   themeToggle: document.querySelector("#themeToggle"),
   themeToggleText: document.querySelector("#themeToggleText"),
+  overviewToggle: document.querySelector("#overviewToggle"),
+  wishOverview: document.querySelector("#wishOverview"),
+  wishStream: document.querySelector("#wishStream"),
+  overviewBack: document.querySelector("#overviewBack"),
   wishFormDialog: document.querySelector("#wishFormDialog"),
   wishForm: document.querySelector("#wishForm"),
   wishFormTitle: document.querySelector("#wishFormTitle"),
@@ -161,6 +167,8 @@ let adRotationTimer = 0;
 let currentAdIndex = 0;
 let currentPage = 1;
 let isSaving = false;
+let lastFocusedBeforeOverview = null;
+let overviewHideTimer = 0;
 
 function setConfirmSaving(saving) {
   isSaving = saving;
@@ -244,6 +252,72 @@ function renderLanternGrid() {
   elements.grid.replaceChildren(fragment);
 }
 
+function isOverviewOpen() {
+  return elements.wishOverview.classList.contains("is-open");
+}
+
+function getOverviewWishes() {
+  return [...wishes].sort((a, b) => {
+    if (a.slotIndex !== b.slotIndex) return a.slotIndex - b.slotIndex;
+    return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+  });
+}
+
+function createOverviewWishCard(wish) {
+  const card = document.createElement("article");
+  card.className = `overview-wish-card ${wish.color || "yellow"}`;
+  card.setAttribute("aria-label", `${wish.name}님의 소원`);
+
+  const title = document.createElement("h3");
+  title.textContent = `${wish.name}님`;
+
+  const content = document.createElement("p");
+  content.textContent = wish.content;
+
+  card.append(title, content);
+  return card;
+}
+
+function createOverviewColumn(columnIndex, wishesForColumn) {
+  const column = document.createElement("div");
+  column.className = "wish-stream-column";
+  column.style.setProperty("--duration", `${88 + columnIndex * 14}s`);
+  column.style.setProperty("--delay", `${columnIndex * -22}s`);
+  column.style.setProperty("--drift", `${columnIndex % 2 === 0 ? 0 : 76}px`);
+
+  const track = document.createElement("div");
+  track.className = "wish-stream-track";
+
+  const set = document.createElement("div");
+  set.className = "wish-stream-set";
+  wishesForColumn.forEach((wish) => set.append(createOverviewWishCard(wish)));
+
+  track.append(set, set.cloneNode(true));
+  column.append(track);
+  return column;
+}
+
+function renderWishOverview() {
+  const filledWishes = getOverviewWishes();
+
+  if (!filledWishes.length) {
+    const empty = document.createElement("div");
+    empty.className = "overview-empty";
+    empty.textContent = "아직 떠오를 소원이 없어요.";
+    elements.wishStream.replaceChildren(empty);
+    return;
+  }
+
+  const repeatCount = Math.max(2, Math.ceil(24 / filledWishes.length));
+  const wishPool = Array.from({ length: repeatCount }, () => filledWishes).flat();
+  const columns = [0, 1, 2].map((columnIndex) => {
+    const wishesForColumn = wishPool.filter((_, index) => index % 3 === columnIndex);
+    return createOverviewColumn(columnIndex, wishesForColumn);
+  });
+
+  elements.wishStream.replaceChildren(...columns);
+}
+
 async function loadWishes({ silent = false } = {}) {
   if (!supabaseClient) {
     if (!silent) showToast("Supabase 연결 스크립트를 불러오지 못했어요.");
@@ -263,6 +337,7 @@ async function loadWishes({ silent = false } = {}) {
 
   wishes = data.map(fromDbWish);
   renderLanternGrid();
+  if (isOverviewOpen()) renderWishOverview();
 }
 
 function subscribeToWishChanges() {
@@ -582,6 +657,37 @@ function handleThemeToggle() {
   refreshLanternImages();
 }
 
+function openWishOverview() {
+  window.clearTimeout(overviewHideTimer);
+  lastFocusedBeforeOverview = document.activeElement;
+  renderWishOverview();
+  elements.appShell.inert = true;
+  elements.bottomTools.inert = true;
+  elements.wishOverview.hidden = false;
+  elements.wishOverview.setAttribute("aria-hidden", "false");
+  document.body.classList.add("overview-open");
+  window.requestAnimationFrame(() => {
+    elements.wishOverview.classList.add("is-open");
+    window.setTimeout(() => elements.overviewBack.focus(), 80);
+  });
+}
+
+function closeWishOverview() {
+  window.clearTimeout(overviewHideTimer);
+  elements.wishOverview.classList.remove("is-open");
+  elements.wishOverview.setAttribute("aria-hidden", "true");
+  elements.appShell.inert = false;
+  elements.bottomTools.inert = false;
+  document.body.classList.remove("overview-open");
+  overviewHideTimer = window.setTimeout(() => {
+    elements.wishOverview.hidden = true;
+  }, 280);
+
+  if (lastFocusedBeforeOverview instanceof HTMLElement) {
+    lastFocusedBeforeOverview.focus();
+  }
+}
+
 function copyShareLinkWithSelection(link) {
   const input = document.createElement("input");
   input.value = link;
@@ -673,6 +779,11 @@ elements.prevPage.addEventListener("click", () => movePage(-1));
 elements.nextPage.addEventListener("click", () => movePage(1));
 elements.shareLinkButton.addEventListener("click", handleShareLink);
 elements.themeToggle.addEventListener("click", handleThemeToggle);
+elements.overviewToggle.addEventListener("click", openWishOverview);
+elements.overviewBack.addEventListener("click", closeWishOverview);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && isOverviewOpen()) closeWishOverview();
+});
 elements.wishForm.addEventListener("submit", handleFormSubmit);
 elements.confirmBack.addEventListener("click", restorePendingWishForm);
 elements.confirmSubmit.addEventListener("click", savePendingWish);

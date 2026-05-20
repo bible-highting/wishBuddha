@@ -186,7 +186,8 @@ h1 {
 }
 
 .page-count,
-.theme-toggle {
+.theme-toggle,
+.overview-toggle {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
@@ -202,7 +203,8 @@ h1 {
   font-weight: 800;
 }
 
-.theme-toggle {
+.theme-toggle,
+.overview-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -210,6 +212,10 @@ h1 {
   padding: 8px 13px;
   color: var(--text);
   font-weight: 900;
+}
+
+.overview-toggle {
+  white-space: nowrap;
 }
 
 .theme-icon {
@@ -223,6 +229,33 @@ h1 {
 :root[data-theme="dark"] .theme-icon {
   background: #fff0bd;
   box-shadow: inset 6px 0 0 #53617f;
+}
+
+.overview-toggle-icon {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+
+.overview-toggle-icon::before,
+.overview-toggle-icon::after {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  height: 5px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  content: "";
+  opacity: 0.82;
+}
+
+.overview-toggle-icon::before {
+  top: 1px;
+}
+
+.overview-toggle-icon::after {
+  bottom: 1px;
 }
 
 .bottom-left-tools {
@@ -895,6 +928,244 @@ h1 {
   transform: translate(-50%, 0);
 }
 
+.wish-overview {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 218, 129, 0.1), transparent 28%),
+    linear-gradient(180deg, #050506 0%, #0a0807 46%, #020202 100%);
+  color: #fff6dc;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 260ms ease,
+    visibility 260ms ease;
+}
+
+.wish-overview[hidden] {
+  display: none;
+}
+
+.wish-overview.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.overview-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 22% 72%, rgba(255, 82, 82, 0.18), transparent 15%),
+    radial-gradient(circle at 74% 36%, rgba(255, 225, 55, 0.17), transparent 14%),
+    radial-gradient(circle at 88% 82%, rgba(72, 255, 96, 0.14), transparent 16%);
+  filter: blur(10px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.wish-stream {
+  position: absolute;
+  inset: -18vh 0 -18vh;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(14px, 5vw, 64px);
+  padding: 0 max(18px, calc((100vw - 700px) / 2));
+  overflow: hidden;
+}
+
+.wish-stream-column {
+  min-width: 0;
+  transform: translateY(var(--drift));
+}
+
+.wish-stream-track {
+  display: grid;
+  gap: clamp(14px, 3.5vh, 30px);
+  will-change: transform;
+  animation: wish-flow-up var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.wish-stream-set {
+  display: grid;
+  justify-items: center;
+  gap: clamp(14px, 3.5vh, 30px);
+  padding-bottom: clamp(14px, 3.5vh, 30px);
+}
+
+.overview-wish-card {
+  position: relative;
+  width: min(100%, clamp(104px, 25vw, 158px));
+  aspect-ratio: 485 / 1156;
+  background: url("./img/paper_long.png") center / contain no-repeat;
+  color: #4b2f22;
+  filter:
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.38))
+    drop-shadow(0 0 10px rgba(255, 236, 184, 0.08));
+}
+
+.overview-wish-card h3,
+.overview-wish-card p {
+  position: absolute;
+  left: 19%;
+  right: 19%;
+  z-index: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.overview-wish-card h3 {
+  top: 27%;
+  color: #3a2319;
+  font-size: clamp(0.58rem, 1.7vw, 0.84rem);
+  line-height: 1.25;
+}
+
+.overview-wish-card p {
+  top: 39%;
+  bottom: 20%;
+  display: -webkit-box;
+  color: #4d3324;
+  font-size: clamp(0.55rem, 1.55vw, 0.76rem);
+  font-weight: 800;
+  line-height: 1.42;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 9;
+  white-space: pre-wrap;
+}
+
+.overview-wish-card.red {
+  filter:
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 12px rgba(255, 91, 84, 0.16));
+}
+
+.overview-wish-card.green {
+  filter:
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 12px rgba(73, 255, 118, 0.14));
+}
+
+.overview-wish-card.blue {
+  filter:
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 12px rgba(95, 157, 255, 0.14));
+}
+
+.overview-wish-card.yellow {
+  filter:
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 12px rgba(255, 222, 77, 0.18));
+}
+
+.floating-lanterns {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.floating-lantern {
+  position: absolute;
+  width: var(--size, 72px);
+  height: auto;
+  opacity: 0.9;
+  filter:
+    drop-shadow(0 0 8px rgba(255, 218, 83, 0.54))
+    drop-shadow(0 0 22px rgba(255, 115, 76, 0.28));
+  transform-origin: 50% 52%;
+  animation: overview-lantern-float var(--float-duration, 10s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+}
+
+.floating-lantern.red {
+  --size: clamp(52px, 13vw, 86px);
+  --float-duration: 11s;
+  --float-delay: -1s;
+  left: 18%;
+  top: 48%;
+}
+
+.floating-lantern.yellow {
+  --size: clamp(54px, 14vw, 92px);
+  --float-duration: 12s;
+  --float-delay: -5s;
+  left: 62%;
+  top: 36%;
+}
+
+.floating-lantern.green {
+  --size: clamp(52px, 13vw, 84px);
+  --float-duration: 13s;
+  --float-delay: -8s;
+  left: 86%;
+  top: 70%;
+}
+
+.floating-lantern.blue {
+  --size: clamp(44px, 11vw, 72px);
+  --float-duration: 10s;
+  --float-delay: -4s;
+  left: 8%;
+  top: 18%;
+}
+
+.floating-lantern.small {
+  opacity: 0.68;
+}
+
+.floating-lantern.red.small {
+  --size: clamp(36px, 9vw, 58px);
+  left: 74%;
+  top: 12%;
+}
+
+.floating-lantern.yellow.small {
+  --size: clamp(36px, 9vw, 58px);
+  left: 29%;
+  top: 79%;
+}
+
+.overview-back {
+  position: fixed;
+  right: clamp(12px, 4vw, 34px);
+  bottom: clamp(16px, 4vh, 34px);
+  z-index: 4;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  padding: 10px 16px;
+  background: rgba(215, 215, 215, 0.72);
+  color: #181818;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  font-weight: 900;
+}
+
+.overview-back:hover,
+.overview-back:focus-visible {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.overview-empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 241, 192, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 246, 220, 0.9);
+  font-weight: 900;
+}
+
 @keyframes lantern-sway {
   0% {
     transform: rotate(0deg) translateY(0);
@@ -920,6 +1191,31 @@ h1 {
 @keyframes cursor-blink {
   50% {
     opacity: 0;
+  }
+}
+
+@keyframes wish-flow-up {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes overview-lantern-float {
+  0%,
+  100% {
+    transform: translate3d(-8px, 8px, 0) rotate(-4deg);
+  }
+
+  35% {
+    transform: translate3d(10px, -16px, 0) rotate(3deg);
+  }
+
+  68% {
+    transform: translate3d(18px, 6px, 0) rotate(-1deg);
   }
 }
 
@@ -950,6 +1246,18 @@ h1 {
   .theme-toggle {
     min-height: 38px;
     padding: 7px 11px;
+  }
+
+  .overview-toggle {
+    min-height: 38px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+  }
+
+  .overview-toggle-icon {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
   }
 
   .bottom-left-tools {
@@ -1045,6 +1353,24 @@ h1 {
 
   .wish-paper {
     width: min(68vw, 300px);
+  }
+
+  .wish-stream {
+    gap: clamp(8px, 3vw, 16px);
+    padding: 0 12px;
+  }
+
+  .overview-wish-card {
+    width: min(100%, clamp(90px, 29vw, 124px));
+  }
+
+  .overview-wish-card h3 {
+    font-size: clamp(0.5rem, 2.4vw, 0.64rem);
+  }
+
+  .overview-wish-card p {
+    font-size: clamp(0.48rem, 2.2vw, 0.6rem);
+    -webkit-line-clamp: 8;
   }
 }
 
